@@ -1,0 +1,30 @@
+---
+
+- import_tasks: root_tasks.yml
+  when: root_access == "yes"
+
+- name: Ensure the Dpl2 'mountcheck.sh' exists.
+  template:
+    src: mountcheck.sh.j2
+    dest: "{{ dpl2_working_directory }}/mountcheck.sh"
+    backup: no
+    force: yes
+    owner: "{{ dpl2_user }}"
+    group: "{{ dpl2_user }}"
+    mode: 0774
+  notify: "Restart Docker container"
+
+- name: Ensure the SSHFS mount check cronjob exists.
+  cron:
+      name: "Ensure SSHFS mountpoints are healthy:"
+      minute: "0"
+      hour: "*/5"
+      state: present
+      job: "{{ dpl2_working_directory }}/mountcheck.sh"
+
+- import_tasks: dpl2s_quincy_1404.yml
+  when: dpl2_location == "quincy-1404"
+
+- import_tasks: dpl2s_quincy.yml
+  when: dpl2_location == "quincy"
+  ignore_errors: yes

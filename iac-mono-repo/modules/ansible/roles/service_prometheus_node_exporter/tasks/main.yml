@@ -1,0 +1,53 @@
+---
+
+- name: Ensure 'prometheus_exporters_common_dist_dir' folder exists.
+  file:
+    path: "{{ prometheus_exporters_common_dist_dir }}"
+    state: directory
+
+- name: Ensure the Prometheus Node Exporter Binary is downloaded.
+  get_url:
+    url: "{{ url }}"
+    dest: "{{ prometheus_exporters_common_dist_dir }}/{{ prometheus_node_exporter_release_name }}.tar.gz"
+
+- name: Ensure the binary tarball is unarchived.
+  unarchive:
+    copy: no
+    src: "{{ prometheus_exporters_common_dist_dir }}/{{ prometheus_node_exporter_release_name }}.tar.gz"
+    dest: "{{ prometheus_exporters_common_dist_dir }}"
+    creates: "{{ prometheus_exporters_common_dist_dir }}/{{ prometheus_node_exporter_release_name }}/node_exporter"
+  register: prometheus_node_exporter_updated
+  notify:
+    - Restart node exporter.
+
+- name: Ensure the group and owner for the installation files are set correctly.
+  file:
+    path: "{{ prometheus_node_exporter_release_name }}"
+    state: directory
+    recurse: yes
+    owner: "{{ prometheus_exporters_common_user}}"
+    group: "{{ prometheus_exporters_common_group }}"
+  when: prometheus_node_exporter_updated is changed
+
+- name: Ensure a symlink exists to the current release.
+  file:
+    src: "{{ prometheus_exporters_common_dist_dir }}/{{ prometheus_node_exporter_release_name }}"
+    path: "{{ prometheus_exporters_common_root_dir }}/node_exporter_current"
+    state: link
+
+- import_tasks: systemd.yml
+  when: service_mgr | default(ansible_service_mgr) == 'systemd'
+
+- import_tasks: upstart.yml
+  when: service_mgr | default(ansible_service_mgr) == 'upstart'
+
+- import_tasks: sysvinit.yml
+  when: service_mgr | default(ansible_service_mgr) in [ 'sysvinit', 'service' ]
+
+- meta: flush_handlers
+
+- name: Ensure the Prometheus Node Exporter service is enabled and started.
+  service:
+    name: prometheus-node-exporter
+    state: started
+    enabled: yes

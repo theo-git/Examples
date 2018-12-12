@@ -1,0 +1,39 @@
+---
+#/opt/gcp_webhook/gcp_webhook.py
+gcp_webhook_url_path: "test" #The resulting URL path would look like: example.example.com/EXAMPLE
+
+#IMPORTANT: Variable below requires a list of one or more HTTP methods that you wish the URL path to respond to if a HTTP request is made to that path. 
+#Example: "['POST']"
+gcp_webhook_http_methods: "['POST']" 
+
+gcp_webhook_url_route_python_block: |
+    @app.route("/{{ gcp_webhook_url_path }}", methods={{ gcp_webhook_http_methods }})
+    def gcp_webhook_{{ gcp_webhook_url_path }}():
+       #Enter what you want this function to do below:
+       return "OK"
+
+# TO SETUP A GIT WEBHOOK THAT UPDATES A GIT REPO ON THE TARGET HOST:
+# 1. Comment out the variable & code above to replace it with the variable & code below.
+# 2. CRITICAL: Populate the 'git_dir' variable below with the file path to the git repo you wish to update.
+#gcp_webhook_url_route_python_block: |
+#    @app.route("/{{ gcp_webhook_url_path }}", methods={{ gcp_webhook_http_methods }})
+#    def gcp_webhook_{{ gcp_webhook_url_path }}():
+#       #IMPORTANT: Change the directory below to the repo directory you wish to have git automagically update when an HTTP request is made to the URL path above.
+#       git_dir = "/CHANGE/THIS/FILE/PATH"
+#       data = json.loads(request.data)
+#       print("New commit by: {}".format(data['commits'][0]['author']['name']))
+#       g = git.cmd.Git(git_dir)
+#       g.pull()
+#       print("*** Updating local Git repo %s***\n" % (git_dir))
+#       return "OK"
+
+
+# The variables below should NOT be changed in most cases:
+
+#/etc/systemd/system/gcp_webhook.service
+gcp_webhook_working_directory: "/opt/gcp_webhook"
+gcp_webhook_environment_path: "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+
+#/etc/nginx/sites-available/
+gcp_webhook_nginx_default_server_filename: "default"
+gcp_webhook_domain_name: "webhook-test.example.com"

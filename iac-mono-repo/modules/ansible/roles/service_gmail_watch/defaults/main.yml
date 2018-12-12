@@ -1,0 +1,74 @@
+---
+
+#SOURCE COMPANY GMAIL ADDRESS:
+#Please enter the COMPANY GMail address that you wish to monitor for new messages in the quotes below:
+gmail_watch_source_email_address: "CHANGE_ME" 
+#default: "EXAMPLE@multiscalehn.com"
+
+#DESTINATION EMAIL ADDRESS:
+#LEAVE UNCHANGED IN MOST CASES
+#Please enter the destination email address that you wish to send alert emails TO, like a PagerDuty address, in the quotes below.
+gmail_watch_destination_email_address: "COMPANY-production-support-email@COMPANY.pagerduty.com" 
+#default: "COMPANY-production-support-email@COMPANY.pagerduty.com"
+
+#ALERT EMAIL SUBJECT LINE:
+#The default subject line that the alert email that's sent to the destination email address is in the quotes below.
+#Usually this does not need to be changed unless you wish to customize the subject line.
+#Leave the variable below unchanged to use the subject line.
+#Or enter the custom subject line you wish to use.
+gmail_watch_email_subject_line: "Urgent email for {}! Please login to that account to retrieve it!" 
+#default: "Urgent email for {}! Please login to that account to retrieve it!"
+
+#ALERT EMAIL HTML BODY:
+#The default HTML body that will be used in the alert email is in the quotes below.
+#Usually this does not need to be changed unless you wish to customize the HTML body.
+#Leave the variable below unchanged to use the HTML body below.
+#Or enter the custom HTML body you wish to use.
+gmail_watch_email_htmlBody: "Please login to {} to respond to the email.<br/>"
+#default: "Please login to {} to respond to the email.<br/>"
+
+#ALERT EMAIL PLAIN TXT BODY:
+#The default Plain TXT body that will be used in the alert email is in the quotes below.
+#Usually this does not need to be changed unless you wish to customize the Plain TXT body.
+#Leave the variable below unchanged to use the Plain TXT body below.
+#Or enter the custom Plain TXT body you wish to use.
+gmail_watch_email_plainTXTBody: "Please login to {} to respond to the email." 
+#default: "Please login to {} to respond to the email."
+
+#PUSH ENDPOINT DOMAIN:
+#Provide the domain that the Gmail API will push a HTTP POST to in order to trigger an alert.
+push_endpoint_domain: "example.comany.com"
+
+####################################################################################################
+####################################################################################################
+###### The variables below should be left unchanged in almost all cases. ###########################
+######                                                                   ###########################
+####################################################################################################
+####################################################################################################
+
+#SET THE GCP PROJECT ID:
+#LEAVE UNCHANGED IN ALMOST ALL CASES
+#The default Google Cloud Project ID is in quotes below.
+#Usually this does not need to be changed unless you wish to setup the GMail Watch Automation in a different project.
+#It is best to leave the default Project ID unchanged below.
+#Or enter the ID of an alternate Project you wish to use.
+gmail_watch_gcp_project: "COMPANY-example-project-name" 
+#default: "COMPANY-corp-154420"
+
+#DIRECTORY PATH:
+#LEAVE UNCHANGED IN ALMOST ALL CASES
+#The default directory path where the automation will reside is in quotes below.
+#Usually this does not need to be changed unless you wish to setup the automation in a different directory.
+#It is best to leave the default directory unchanged below.
+#Or enter the path of an alternate directory you wish to use.
+gmail_watch_working_directory: "/opt/gmail_inbox_watch" 
+#default: "/opt/gmail_inbox_watch_alert"
+
+#GOOGLE PUB/SUB TOPIC:
+#LEAVE UNCHANGED IN ALMOST ALL CASES
+#The Google Pub/Sub topic below that listens for requests from this script.
+#When a request is received, the topic then POSTs to a webhook on ops-bot that then fires an email to the destination email address so that someone can be alerted.
+#IMPORTANT: The variable below does not need to be changed in most cases.
+gmail_watch_topicName: "projects/{{ gmail_watch_gcp_project }}/topics/gmail_watch_{{ source_email_address_username.stdout }}" 
+#default: "projects/{{ gmail_watch_gcp_project }}/topics/gmail_watch_{{ source_email_address_username.stdout }}"
+

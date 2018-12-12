@@ -1,0 +1,25 @@
+# {{ ansible_managed }}
+{% macro params(name, vals) %}
+{% for v in vals %}-{{ name }} {{ v }} {% endfor %}
+{% endmacro %}
+[Unit]
+After=docker.service
+PartOf=docker.service
+Requires=docker.service
+
+[Service]
+{% if docker_container_env is defined %}
+EnvironmentFile={{ docker_container_env_file }}
+{% endif %}
+{% if docker_container_prelaunch is defined %}
+ExecStartPre=-{{ docker_container_prelaunch }}
+{% endif %}
+ExecStart=/usr/bin/docker run --name {{ docker_container_name }} --rm {% if docker_container_env is defined %}--env-file {{ docker_container_env_file }} {% endif %}{% if docker_container_volumes is defined %}{{ params('v', docker_container_volumes) }}{% endif %}{% if docker_container_ports is defined %}{{ params('p', docker_container_ports) }}{% endif %}{% if docker_container_links is defined %}{{ params('-link', docker_container_links) }}{% endif %}{% if docker_container_labels is defined %}{{ params('l', docker_container_labels) }}{% endif %}{% if docker_container_args is defined %}{{ docker_container_args | default('') |trim }}{% endif %}{{ docker_container_image }} {{ docker_container_cmd | default('') | trim }}
+ExecStop=/usr/bin/docker stop {{ docker_container_name }}
+
+SyslogIdentifier={{ docker_container_name }}
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=docker.service

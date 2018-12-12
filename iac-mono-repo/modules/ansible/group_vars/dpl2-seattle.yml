@@ -1,0 +1,29 @@
+---
+
+root_access: "yes"
+ansible_ssh_pipelining: yes 
+dpl2_serial: 1
+dpl2_location: "seattle"
+dpl2_user: "example"
+dpl2_working_directory: "/opt/{{ dpl2_user }}/dpl2_{{ dpl2_prefix }}"
+dpl2_config_data_file_path: "{{ dpl2_working_directory }}/datas_{{ dpl2_prefix }}"
+# Docker variables:
+docker_users: ["{{ dpl2_user }}"]
+# SSHFS variables:
+sshfs_user: "{{ dpl2_user }}"
+sshfs_working_directory: "{{ dpl2_working_directory }}"
+sshfs_command_arguments: "-o IdentityFile={{ sshfs_key_path }}/{{ sshfs_key_name }} -o StrictHostKeyChecking=no -o reconnect -o allow_other -o cache=no -o Compression=no"
+sshfs_remote_host: "test"
+sshfs_mountpoint_directories:
+    - "{{ dpl2_config_data_file_path }}"
+    - "{{ dpl2_config_data_file_path }}_rsync"
+sshfs_key_path: "/home/{{ dpl2_user }}/.ssh"
+sshfs_key_name: "{{ dpl2_user }}_key"
+sshfs_key_config: |
+    Host "{{ sshfs_remote_host }}"
+      Hostname "{{ sshfs_remote_host }}"
+      User "{{ dpl2_user }}"
+      IdentityFile "{{ sshfs_key_path }}/{{ sshfs_key_name }}"
+      Compression yes
+      CompressionLevel 3
+      ServerAliveInterval 30

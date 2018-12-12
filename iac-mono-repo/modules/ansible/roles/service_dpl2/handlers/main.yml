@@ -1,0 +1,7 @@
+---
+
+- name: Ensure the container is stopped and then started
+  shell: docker-compose down && docker-compose up -d
+  args:
+    chdir: "{{ dpl2_working_directory }}"
+  listen: "restart dpl2 container"

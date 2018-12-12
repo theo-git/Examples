@@ -1,0 +1,35 @@
+---
+
+# Root is required for this role to function.
+root_access: "yes"
+
+# Minimum supported version: 0.15, latest stable below:
+prometheus_node_exporter_version: 0.16.0
+prometheus_node_exporter_release_name: "node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64"
+
+# https://github.com/prometheus/node_exporter#enabled-by-default
+prometheus_node_exporter_enabled_collectors:
+  - conntrack
+  - diskstats
+  - entropy
+  - filefd
+  - filesystem
+  - loadavg
+  - mdadm
+  - meminfo
+  - netdev
+  - netstat
+  - stat
+  - textfile
+  - time
+  - vmstat
+  # Not enabled by default but useful in MSHN environments:
+  - systemd
+  - mountstats
+
+prometheus_node_exporter_config_flags:
+  'web.listen-address': '0.0.0.0:9100'
+  'log.level': 'info'
+
+url: "{% if prometheus_node_exporter_url is not defined %}{% if prometheus_node_exporter_version is version_compare('0.13.0', '>=') %}https://github.com/prometheus/node_exporter/releases/download/v{{ prometheus_node_exporter_version }}/{{ prometheus_node_exporter_release_name }}.tar.gz{% else %}https://github.com/prometheus/node_exporter/releases/download/{{ prometheus_node_exporter_version }}/{{ prometheus_node_exporter_release_name }}.tar.gz{% endif %}{% else %}{{ prometheus_node_exporter_url }}{% endif %}"
+

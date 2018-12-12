@@ -1,0 +1,26 @@
+---
+# tasks file 
+
+- name: Ensure google-fluentd (Stackdriver Logging Agent) is installed to stream logs Stackdriver.
+  get_url:
+    url: "https://dl.google.com/cloudagents/install-logging-agent.sh"
+    dest: /tmp/install-logging-agent.sh
+- shell: bash /tmp/install-logging-agent.sh
+
+- name: Ensure Stackdriver Monitoring Agent is installed to monitor running processes. This is separate from google-fluentd.
+  get_url:
+    url: "https://dl.google.com/cloudagents/install-monitoring-agent.sh"
+    dest: /tmp/install-monitoring-agent.sh
+- shell: bash /tmp/install-monitoring-agent.sh
+
+- name: Ensure the custom log config file is present.
+  when: stackdriver_log_name is defined
+  template:
+    src: templates/custom_log.conf.j2
+    dest: "/etc/google-fluentd/config.d/{{ stackdriver_log_name }}.conf"
+    backup: no
+    force: yes # This is needed to ensure Ansible overwrites any existing file if they differ.
+    owner: root
+    group: root
+    mode: 0644
+  notify: "reload google-fluentd"

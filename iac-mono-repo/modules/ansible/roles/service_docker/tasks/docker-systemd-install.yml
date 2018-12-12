@@ -1,0 +1,34 @@
+---
+
+- name: Ensure the ENV file for "{{ docker_container_name }}.service" exists.
+  template:
+    src: env.j2
+    dest: "{{ docker_container_env_file }}"
+    owner: root
+    group: root
+    mode: '0600'
+  when: docker_container_env is defined
+  notify: "Restart Docker container"
+
+# Using 'command' instead of 'docker_image' to avoid having to install docker-py.
+- name: Ensure the image "{{ docker_container_image }}" is pulled.
+  command: "docker pull {{ docker_container_image }}"
+  when: docker_container_pull
+
+- name: Ensure a systemd unit for "{{ docker_container_name }}.service" exists.
+  template:
+    src: unit.j2
+    dest: "/etc/systemd/system/{{ docker_container_name }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: "Restart Docker container"
+
+- name: Ensure "{{ docker_container_name }}.service" is enabled and started.
+  systemd:
+    name: '{{ docker_container_name }}.service'
+    daemon_reload: true
+    enabled: "{{ docker_container_service_enabled }}"
+    masked: "{{ docker_container_service_masked }}"
+    state: "{{ docker_container_service_state }}"
+  register: enable_and_start

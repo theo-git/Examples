@@ -1,0 +1,31 @@
+---
+
+- name: Ensure the Bridge config folder exists.
+  file:
+    path: "{{ bridge_working_directory }}/config" 
+    state: directory
+    owner: "{{ bridge_user }}"
+    group: "{{ bridge_user }}"
+    mode: 0774
+
+- name: Write docker-compose.yml with vars.
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ bridge_working_directory }}/docker-compose.yml"
+    backup: no
+    force: yes # This is needed to ensure Ansible overwrites any existing compose file.
+    owner: "{{ bridge_user }}"
+    group: "{{ bridge_user }}"
+    mode: 0664
+  notify: "Restart Docker container"
+
+- name: Write bridge.cfg with vars.
+  template:
+    src: bridge.cfg.j2
+    dest: "{{ bridge_working_directory }}/config/bridge.cfg"
+    backup: no
+    force: yes
+    owner: "{{ bridge_user }}"
+    group: "{{ bridge_user }}"
+    mode: 0664
+  notify: "Restart Docker container"

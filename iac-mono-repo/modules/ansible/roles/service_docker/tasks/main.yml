@@ -1,0 +1,10 @@
+---
+
+- include_tasks: docker-login-gcloud.yml
+  when: docker_login_method == "gcloud"
+
+- include_tasks: docker-login-json_key.yml
+  when: docker_login_method == "json_key"
+
+- include_tasks: docker-systemd.yml
+  when: docker_container_name and root_access == "yes"

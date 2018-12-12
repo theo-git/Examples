@@ -1,0 +1,13 @@
+---
+version: "{{ bridge_docker_version }}" 
+services:
+  bridge:
+    container_name: "{{ bridge_container_name }}"
+    image: "{{ bridge_image }}" 
+    volumes:
+      - "{{ bridge_volume_1 }}"
+      - "{{ bridge_volume_2 }}"
+      - "{{ bridge_volume_3 }}"
+    ports:
+      - "{{ bridge_ports }}"
+    restart: "{{ bridge_restart_state }}"

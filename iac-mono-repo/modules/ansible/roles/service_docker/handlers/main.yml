@@ -1,0 +1,13 @@
+---
+
+- name: Restart Docker.
+  service: 
+    name: docker
+    state: "{{ docker_restart_handler_state }}"
+
+- name: "Restart Docker container {{ docker_container_name }}"
+  service:
+    name: "{{ docker_container_name }}.service"
+    state: restarted
+  when: docker_container_service_state != "stopped" and enable_and_start.changed == False
+  listen: "Restart Docker container"

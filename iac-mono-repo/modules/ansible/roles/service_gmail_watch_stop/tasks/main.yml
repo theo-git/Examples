@@ -1,0 +1,17 @@
+---
+
+- name: Extract username from the target email address and store as a variable for later use
+  shell: echo "{{ gmail_watch_source_email_address }}" | cut -d@ -f1
+  register: source_email_address_username
+
+- name: Ensure the watch is stopped on the source email inbox
+  shell: cd "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}" && ./stop_watching.sh
+  ignore_errors: yes
+
+- name: Ensure the cronjob for the corresponding watch is removed so that it doesn't re-enable the watch
+  cron:
+      name: "Daily reinitialize the watch method on Gmail inbox {{ gmail_watch_source_email_address }}:"
+      minute: "0"
+      hour: "22"
+      state: absent
+      job: cd "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}" && ./watch_inbox_initiate.sh

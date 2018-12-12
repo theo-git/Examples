@@ -1,0 +1,357 @@
+---
+# tasks file
+
+- name: Wait for the Tableau VM SSH server to accept incoming connections.  Check every 20 seconds for a connection. Timeout at 30 minutes. This is needed right after Terraform creates the VM.
+  wait_for_connection:
+    timeout: 1800
+    sleep: 20
+
+- name: Ensure the tsmadmin group exists
+  become: yes
+  become_user: root
+  become_method: sudo
+  group:
+    name: tsmadmin
+    state: present
+
+- name: Ensure the user 'tableau' exists with the group 'tsmadmin'
+  become: yes
+  become_user: root
+  become_method: sudo
+  user:
+    name: tableau
+    password: "{{ tableau_server_ubuntu_tableau_user_crypt_password }}" 
+    groups: 
+      - tsmadmin
+
+- name: Ensure the tableau group exists
+  become: yes
+  become_user: root
+  become_method: sudo
+  group:
+    name: tableau
+    state: present
+
+- name: Ensure the user 'tabserv' exists with the group 'tsmadmin'
+  become: yes
+  become_user: root
+  become_method: sudo
+  user:
+    name: tabserv
+    password: "{{ tableau_server_ubuntu_tableau_user_crypt_password }}" 
+    groups: 
+      - sudo
+      - tsmadmin
+
+- name: Ensure the tableau_setup directory exists
+  become: yes
+  become_user: root
+  become_method: sudo
+  file:
+    path: "/home/tabserv/tableau_setup"
+    state: directory
+    mode: 0770
+    owner: tabserv
+    group: tabserv
+
+- name: Ensure the Tableau registration config file exists
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  copy:
+      content: "{{ tableau_server_ubuntu_registration_config }}"
+      dest: "/home/tabserv/tableau_setup/registration.json"
+      force: yes
+      owner: tabserv
+      group: tabserv
+      mode: 0770
+
+- name: Ensure the Tableau base tsm config file exists
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  copy:
+      src: "files/base_config.json"
+      dest: "/home/tabserv/tableau_setup/base_config.json"
+      force: yes
+      owner: tabserv
+      group: tabserv
+      mode: 0770
+
+- name: Ensure the Tableau Email Alerts SMTP config file exists
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  copy:
+      content: "{{ tableau_server_ubuntu_smtp_config }}"
+      dest: "/home/tabserv/tableau_setup/smtp.json"
+      force: yes
+      owner: tabserv
+      group: tabserv
+      mode: 0770
+
+- name: Ensure the Stackdriver Monitoring Agent is installed so that Stackdriver can monitor the health of Tableau tsm process on the VM.
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: curl -sSO https://dl.google.com/cloudagents/install-monitoring-agent.sh && bash install-monitoring-agent.sh 
+  register: tableau_server_ubuntu_existing_deb_check
+  args:
+      chdir: ~/
+      executable: /bin/bash
+
+- name: Update repos and install the package gdebi-core
+  become: yes
+  become_user: root
+  become_method: sudo
+  apt:
+    name: gdebi-core
+    state: present
+    update_cache: yes
+
+- name: Ensure the MySQL drivers are installed so that the server can connect to target CloudSQL databases.
+  become: yes
+  become_user: root
+  become_method: sudo
+  apt:
+    deb: "{{ tableau_server_ubuntu_mysql_drivers_url }}" 
+
+- name: Ensure the custom Tableau-specific Postgres drivers are installed so that the server can connect to it's own internally managed datasources.
+  become: yes
+  become_user: root
+  become_method: sudo
+  apt:
+    deb: "{{ tableau_server_ubuntu_custom_postgressql_drivers_url }}" 
+
+- name: Extract the Tableau deb package filename from the target URL and store it as a variable for later use
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: echo "{{ tableau_server_ubuntu_url }}" | sed 's/.*\///'
+  register: tableau_server_ubuntu_filename
+
+- name: Extract the Tableau deb package version number from the target URL and store it as a variable for later use
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: echo "{{ tableau_server_ubuntu_url }}" | sed -n 's/.*server-\([^ ]*\)_.*.deb/\1/p'
+  register: tableau_server_ubuntu_version
+
+- name: Ensure the Tableau server deb is downloaded from the URL specified. _NOTE_ The file is over 1GB so it may take awhile to download.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: cd "/home/tabserv/tableau_setup" && wget -N "{{ tableau_server_ubuntu_url }}"
+
+- name: Check if a Tableau server package is already installed and store the result in a variable for later use.
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: dpkg-query -l tableau-server*
+  ignore_errors: yes #This is needed to ensure this play doesn't fail the Ansible run since a non-zero exit code is needed in the next play.
+  register: tableau_server_ubuntu_existing_deb_check
+
+- name: If an existing Tableau deb package is not already installed, then install the Tableau server deb package using gdebi per Tableau's documentation
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: gdebi -n "/home/tabserv/tableau_setup/{{ tableau_server_ubuntu_filename.stdout }}"
+  when: tableau_server_ubuntu_existing_deb_check.rc == 1 #rc=return code. dpkg-query in the last play will return 0 if the package is installed.  Else will return a 1. 
+  register: shell_result
+- debug:
+    var: shell_result.stdout_lines
+
+- name: Extract the Tableau TSM version number from the stdout of tableau_server_ubuntu_existing_deb_check. Then store it as a variable for later use.
+  become: yes
+  become_user: root
+  become_method: sudo
+  #  shell: echo "{{ tableau_server_ubuntu_existing_deb_check.stdout }}" | sed -n 's/.*tableau-server-\([^ ]*\) .*/\1/p'
+  shell: dpkg-query -l tableau-server* | sed -n 's/.*tableau-server-\([^ ]*\) .*/\1/p'
+  register: tableau_server_ubuntu_tsm_version
+
+- name: Ensure the '/var/opt/tableau/tableau_server' directory is owned by the tableau user & group
+  become: yes
+  become_user: root
+  become_method: sudo
+  file:
+    path: "/var/opt/tableau/tableau_server"
+    state: directory
+    recurse: yes
+    mode: 0770
+    owner: tableau
+    group: tableau
+
+- name: Initialize the Tableau tsm service and exit to complete installation.  This must be done as root.  Doing so as another user will cause the tsm service to fail to start.
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: "cd /opt/tableau/tableau_server/packages/scripts.{{ tableau_server_ubuntu_tsm_version.stdout }} && ./initialize-tsm --accepteula -a tabserv -u tabserv -p '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}' && exit" #Exit is required per Tableau's documentation to ensure the script changes take affect upon re-login.
+  ignore_errors: yes #This is needed to ensure this play is idempotent.  If the script above has already been run, it will throw an error, cause the entire playbook to fail.  However, the playbook can proceed successfully.
+  register: shell_result
+- debug:
+    var: shell_result.stdout_lines
+
+- name: Ensure the custom logos file directory exists
+  become: yes
+  become_user: root
+  become_method: sudo
+  file:
+    path: "/var/opt/tableau/tableau_server/data/tabsvc/httpd/images/custom"
+    state: directory
+    mode: 0770
+    owner: tableau
+    group: tableau
+
+- name: Sets facl for tabserv user on the /var/opt/tableau directory so the user can access it
+  become: yes
+  become_user: root
+  become_method: sudo
+  acl:
+    path: "/var/opt/tableau"
+    #path: "/var/opt/tableau/tableau_server/data/tabsvc/httpd/images/custom"
+    entity: tabserv
+    etype: user
+    permissions: rwx
+    default: yes
+    state: present
+
+- name: Sets facl for tableau user on the /var/opt/tableau directory so the user can access it
+  become: yes
+  become_user: root
+  become_method: sudo
+  acl:
+    path: "/var/opt/tableau"
+    entity: tableau
+    etype: user
+    permissions: rwx
+    default: yes
+    state: present
+
+- name: Ensure the custom logo files exists in the custom logos directory
+  become: yes
+  become_user: root
+  become_method: sudo
+  copy:
+      src: "files/logos/"
+      dest: "/var/opt/tableau/tableau_server/data/tabsvc/httpd/images/custom"
+      force: yes
+      owner: tableau
+      group: tableau
+      mode: 0770
+
+- name: Ensure that the tableau user's ~/.bashrc sources the /etc/profile.d/tableau_server.sh script to ensure the Tableau bin directory is added to PATH.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  lineinfile:
+    create: yes
+    state: present
+    path: ~/.bashrc
+    line: source /etc/profile.d/tableau_server.sh
+    insertafter: EOF
+
+- name: Ensure that the root user's ~/.bashrc sources the /etc/profile.d/tableau_server.sh script to ensure the Tableau bin directory is added to PATH.
+  become: yes
+  become_user: root
+  become_method: sudo
+  lineinfile:
+    create: yes
+    state: present
+    path: ~/.bashrc
+    line: source /etc/profile.d/tableau_server.sh
+    insertafter: EOF
+
+- name: Ensure the Tableau software license is activated.
+  become: yes
+  become_user: root
+  become_method: sudo
+  #Unfortunately the full PATH to the tsm executable needs to be specified below as Ansible has an issue sourcing ~/.bashrc, ~/.bash_profile, ~/.bash_login, ~/.profile, or even running /etc/profile.d/tableau_server.sh on login.
+  #But Bash has no issues sourcing /etc/profile.d/tableau_server.sh when manually SSHing to the target host.
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm licenses activate -k {{ tableau_server_ubuntu_license }} --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  args:
+    executable: /bin/bash
+
+- name: Ensure the Tableau software license is registered.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm register --file /home/tabserv/tableau_setup/registration.json --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  args:
+    executable: /bin/bash
+
+- name: Ensure the Tableau local identity store is configured.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm settings import -f /opt/tableau/tableau_server/packages/scripts.{{ tableau_server_ubuntu_tsm_version.stdout }}/config.json --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  ignore_errors: yes #Needed to ensure this play is idempotent.  The tsm command will fail the play since it only allows the identity store to be configured once.
+  args:
+    executable: /bin/bash
+
+- name: Ensure the Tableau SMTP Config for Email Alerts is imported.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm settings import -f /home/tabserv/tableau_setup/smtp.json --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  args:
+    executable: /bin/bash
+
+- name: Ensure all the Tableau pending-changes are applied.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm pending-changes apply --restart --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  args:
+    executable: /bin/bash
+
+- name: Ensure the Tableau service is initialized. _NOTE_ This may take up to 30 minutes to complete.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm initialize --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}' --start-server --request-timeout 1800"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  ignore_errors: yes #Needed to ensure this play is idempotent.  The tsm command will fail the play since it only allows the server to be initialized once.
+  args:
+    executable: /bin/bash
+
+- name: Ensure the Tableau base config is imported. _NOTE_ This can only be done after the Tableau service is initialized.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm settings import -f /home/tabserv/tableau_setup/base_config.json --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  args:
+    executable: /bin/bash
+
+- name: Ensure the the Tableau server uses the MSHN logo files and server name of "Multiscale Analytics"
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm customize --server-name 'Multiscale Analytics' --signin-logo '/var/opt/tableau/tableau_server/data/tabsvc/httpd/images/custom/logo_main400w.jpg' --header-logo '/var/opt/tableau/tableau_server/data/tabsvc/httpd/images/custom/SimpleLogo.png' --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  args:
+    executable: /bin/bash
+
+- name: Ensure all the Tableau pending-changes are applied.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tsm pending-changes apply --restart --username tabserv --password '{{ tableau_server_ubuntu_tableau_user_noncrypt_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  args:
+    executable: /bin/bash
+
+- name: Ensure the webadmin user who can manage the Tableau Server from the web interface is created.
+  become: yes
+  become_user: tabserv
+  become_method: sudo
+  shell: "/opt/tableau/tableau_server/packages/customer-bin.{{ tableau_server_ubuntu_tsm_version.stdout }}/tabcmd initialuser --server 'localhost:80' --username 'webadmin' --password '{{ tableau_server_ubuntu_webadmin_password }}'"
+  no_log: true #Needed to ensure that Ansible doesn't write the decrypted password to the logs.
+  ignore_errors: yes #Needed to ensure this play is idempotent.  The tsm command will fail the play since it only allows the server user to be initialized once.
+  args:
+    executable: /bin/bash

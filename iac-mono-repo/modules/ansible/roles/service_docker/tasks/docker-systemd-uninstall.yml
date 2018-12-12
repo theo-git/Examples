@@ -1,0 +1,20 @@
+---
+- name: Remove ENV file for {{ docker_container_name }}.service
+  file:
+    path: "{{ sysconf_dir }}/{{ docker_container_name }}"
+    state: absent
+
+- name: Disable and stop {{ docker_container_name }}
+  systemd:
+    name: '{{ docker_container_name }}.service'
+    enabled: false
+    state: stopped
+
+- name: Remove unit {{ docker_container_name }}.service
+  file:
+    path: /etc/systemd/system/{{ docker_container_name }}.service
+    state: absent
+
+- name: Reload systemd units
+  command: systemctl daemon-reload
+  changed_when: false

@@ -1,0 +1,8 @@
+---
+
+- hosts: all 
+  become: true
+  roles:
+  - service_dpl1
+  - service_stackdriver
+  - service_logrotate

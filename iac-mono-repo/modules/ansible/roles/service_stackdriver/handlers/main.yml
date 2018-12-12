@@ -1,0 +1,7 @@
+---
+
+- name: Ensure google-fluentd is reloaded 
+  service:
+      name: google-fluentd
+      state: reloaded
+  listen: "reload google-fluentd"

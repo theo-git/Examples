@@ -1,0 +1,15 @@
+---
+
+root_access: "yes"
+ansible_python_interpreter: "/usr/bin/python3" 
+ansible_user: "test"
+dpl2_prefix: "stage"
+dpl2_ports: "10:1010"
+dpl2_config_dpl1_server: "1.2.3.4"
+dpl2_config_dpl1_server_port: "2703"
+dpl2_config_datasource: "{{ dpl2_prefix }}"
+dpl2_config_data_file_prefix: '"TEST"' ###
+# SSHFS role variables:
+sshfs_remote_path: "/path/to/data"
+# Docker role variables
+docker_apt_ignore_key_error: False # Required since the Dpl2 stage VM is running Ubuntu 18.04 where SNI is supported so we do not want to ignore APT key errors.

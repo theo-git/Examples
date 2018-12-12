@@ -1,0 +1,49 @@
+---
+
+# Root is required for some plays in this role.  If root_access is 'no', then root-dependent plays will be skipped.
+root_access: "no"
+
+# docker_edition can be set to "ce" (Community Edition) or "ee" (Enterprise Edition).
+docker_edition: "ce"
+docker_package: "docker-{{ docker_edition }}"
+docker_package_state: present
+
+# Docker service options.
+docker_service_state: started
+docker_service_enabled: true
+docker_restart_handler_state: restarted
+
+# Docker Compose options.
+docker_install_compose: true
+# For non-Ubuntu 18.04 distributions, please specify the docker-compose version below.
+docker_compose_version: "1.22.0"
+docker_compose_path: /usr/local/bin/docker-compose
+
+# Ubuntu/Debian variables:
+docker_apt_release_channel: stable #Switch 'stable' to 'edge' if needed.
+docker_apt_arch: amd64
+docker_apt_repository: "deb [arch={{ docker_apt_arch }}] https://download.docker.com/linux/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} {{ docker_apt_release_channel }}"
+docker_apt_ignore_key_error: False
+
+# RedHat/CentOS/Fedora variables:
+docker_yum_repo_url: https://download.docker.com/linux/{{ (ansible_distribution == "Fedora") | ternary("fedora","centos") }}/docker-{{ docker_edition }}.repo
+docker_yum_repo_enable_edge: 0
+docker_yum_repo_enable_test: 0
+
+# A list of users that should be apart of the docker group to allow them to interact with Docker containers.
+docker_users: []
+
+# (Optional) Docker Login variables. See README for details.
+docker_registry: ""
+docker_login_method: ""
+docker_login_json_key: ""
+
+# (Optional) Docker Container Systemd Unit variables:
+docker_container_name: ""
+docker_container_cmd: ""
+docker_container_env_file: "{{ sysconf_dir }}/{{ docker_container_name }}"
+docker_container_prelaunch: "/path/to/script"
+docker_container_pull: true
+docker_container_service_enabled: true
+docker_container_service_masked: false
+docker_container_service_state: "started"

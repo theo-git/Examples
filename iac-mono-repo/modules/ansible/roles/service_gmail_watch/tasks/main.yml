@@ -1,0 +1,210 @@
+---
+
+- name: Ensure Python2 is installed
+  apt:
+      name: python
+      state: present
+
+- name: Ensure Python3 is installed
+  apt:
+      name: python3
+      state: present
+
+- name: Ensure pip is installed
+  apt:
+      name: python-pip
+      state: present
+
+- name: Ensure python-dev is installed
+  apt:
+      name: python-dev
+      state: present
+
+- name: Ensure google-cloud for Python tools are installed
+  pip:
+      name: google-cloud
+
+- name: Ensure google-api-python-client for Python is installed
+  pip:
+     name: google-api-python-client
+
+- name: Ensure google-cloud-pubsub for Python is installed
+  pip:
+      name: google-cloud-pubsub
+
+- name: Extract username from the target email address and store as a variable for later use
+  shell: echo "{{ gmail_watch_source_email_address }}" | cut -d@ -f1
+  register: source_email_address_username
+
+- name: Extract username from the target email address, replace the '.' with a '_', and store as a variable for later use
+  shell: echo "{{ gmail_watch_source_email_address }}" | cut -d@ -f1 | tr '.' '_'
+  register: source_email_address_username_safe
+
+- name: Ensure gmail_watch working directory and email-username-specific subdirectory exists
+  file:
+      path: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      state: directory
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure logging.sh exists
+  template:
+      src: templates/logging.sh
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure watch.py exists
+  template:
+      src: templates/watch.py
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure watch_inbox_initiate.sh exists
+  template:
+      src: templates/watch_inbox_initiate.sh
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure send.py exists
+  template:
+      src: templates/send.py
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure send_message.sh exists
+  template:
+      src: templates/send_message.sh
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure stop.py exists
+  template:
+      src: templates/stop.py
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure stop_watching.sh exists
+  template:
+      src: templates/stop_watching.sh
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure GmailServiceObject.py exists
+  template:
+      src: templates/GmailServiceObject.py
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Ensure the encrypted Google Domain Wide Delegation (DWD) service account key exists
+  copy:
+      src: files/gmail-dwd-credentials-example.json
+      dest: "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}"
+      force: yes
+
+- name: Ensure the gcp_webhook backup subdirectory exists
+  file:
+      path: /opt/gcp_webhook/backups
+      state: directory
+      owner: root
+      group: www-data
+      mode: 0750
+
+- name: Backup the existing /opt/gcp_webhook/gcp_webhook.py file
+  shell: cp /opt/gcp_webhook/gcp_webhook.py /opt/gcp_webhook/backups/gcp_webhook.py_backup-$(date +%Y%m%d%_H%M%S)
+  ignore_errors: yes #Theo: this is needed to ensure that Ansible doesn't fail the play when there are no existing files to backup
+
+- name: Ensure nginx config backup folder exists
+  file:
+      path: /etc/nginx/backups/sites-available
+      state: directory
+
+- name: Backup existing /etc/nginx/sites-available/default config file
+  shell: cp /etc/nginx/sites-available/default /etc/nginx/backups/sites-available/default_backup-$(date +%Y%m%d_%H%M%S)
+  ignore_errors: yes #Theo: this is needed for deployments of new configs so that ansible doesn't fail the play when there are no existing files to backup
+
+- name: Ensure the nginx default server file contains a URL path for the new gmail_watch
+  blockinfile:
+      path: "/etc/nginx/sites-available/default"
+      #This backup option should not be used since it will create a backup of the gcp_webhook.py file in the same directory, making it confusing.  Therefore the previous play above backups up the gcp_webhook.py manually.
+      backup: no
+      state: present
+      #The line below is needed to ensure that ansible doesn't overwrite an existing block for a different URL path.
+      marker: "# {mark} ANSIBLE MANAGED BLOCK FOR {{ source_email_address_username.stdout }}"
+      insertbefore: "BEGIN ANSIBLE MANAGED BLOCK - '}' MARKER"
+      block: |
+              location "/{{ source_email_address_username.stdout }}" {
+                  include uwsgi_params;
+                  uwsgi_pass unix:/opt/gcp_webhook/gcp_webhook.sock;
+                  }
+
+- name: Ensure the /opt/gcp_webhook/backups folder exists
+  file:
+      path: /opt/gcp_webhook/backups/
+      state: directory
+
+- name: Backup existing /opt/gcp_webhook/backups/gcp_webhook.py file just in case someone made manual modifications to it
+  shell: cp /opt/gcp_webhook/backups/gcp_webhook.py /opt/gcp_webhook/backups/gcp_webhook_backup-$(date +%Y%m%d%_H%M%S)
+  ignore_errors: yes #This is needed for deployments of new configs so that ansible doesn't fail the play when there are no existing files to backup
+
+- name: Ensure an URL handler for the new gmail-inbox-watch exists in the host VM's gcp_webhook.py file
+  blockinfile:
+      path: "/opt/gcp_webhook/gcp_webhook.py"
+      #This backup option cannot be used since it will create a backup of the gcp_webhook.py in the same directory and can cause the webhook to fail to start.  Therefore the previous play above backups up the 'default' config manually.
+      backup: no
+      state: present
+      #The line below is needed to ensure that ansible doesn't overwrite an existing block for a different URL path.
+      marker: "# {mark} ANSIBLE MANAGED BLOCK FOR {{ source_email_address_username.stdout }}"
+      insertbefore: "BEGIN ANSIBLE MANAGED BLOCK - BLOCK AT EOF"
+      block: |
+          @app.route("/{{ source_email_address_username.stdout }}", methods=['POST'])
+          def gcp_webhook_{{ source_email_address_username_safe.stdout }}():
+              subprocess.call(['/bin/bash', 'send_message.sh'],
+              cwd='/opt/gmail_watch/{{ source_email_address_username.stdout }}')
+              return "OK"
+
+- name: Ensure the nginx is restarted
+  systemd:
+    daemon_reload: yes
+    name: nginx
+    state: restarted
+
+- name: Ensure the gcp_webhook service is restarted
+  service:
+      name: gcp_webhook
+      state: restarted
+
+- name: Ensure a cronjob for the unique watch exists
+  cron:
+      name: "Daily reinitialize the watch method on Gmail inbox {{ gmail_watch_source_email_address }}:"
+      minute: "0"
+      hour: "22"
+      state: present
+      job: cd "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}" && ./watch_inbox_initiate.sh
+
+- name: Ensure the watch is running on the source email inbox
+  shell: cd "{{ gmail_watch_working_directory | default('/opt/gmail_watch') }}/{{ source_email_address_username.stdout }}" && ./watch_inbox_initiate.sh

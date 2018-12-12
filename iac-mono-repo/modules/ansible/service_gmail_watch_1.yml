@@ -1,0 +1,29 @@
+---
+
+- hosts: localhost
+  connection: local
+  tasks:
+  - name: Extract username from the target email address and store as a variable for later use
+    shell: echo "{{ gmail_inbox_watch_source_email_address }}" | cut -d@ -f1
+    register: source_email_address_username
+
+  - name: Ensure a Google PubSub topic exists for the source_email_address
+    shell: "gcloud pubsub topics create gmail_inbox_watch_{{ source_email_address_username.stdout }} --project={{ gmail_inbox_watch_gcp_project }}"
+    register: shell_result
+    ignore_errors: yes
+  - debug:
+      var: shell_result.stdout_lines
+
+  - name: Ensure a Google PubSub topic subscription exists for the source_email_address
+    shell: "gcloud pubsub subscriptions create gmail_inbox_watch_{{ source_email_address_username.stdout }} --topic gmail_inbox_watch_{{ source_email_address_username.stdout }} --push-endpoint https://{{ push_endpoint_domain }}/{{ source_email_address_username.stdout }} --project={{ gmail_inbox_watch_gcp_project }}"
+    register: shell_result
+    ignore_errors: yes
+  - debug:
+      var: shell_result.stdout_lines
+
+  - name: Ensure a Google PubSub topic exists for the source_email_address
+    shell: gcloud projects add-iam-policy-binding "{{ gmail_inbox_watch_gcp_project }}" --member serviceAccount:gmail-api-push@system.gserviceaccount.com --role roles/pubsub.publisher
+    register: shell_result
+    ignore_errors: yes
+  - debug:
+      var: shell_result.stdout_lines

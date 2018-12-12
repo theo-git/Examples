@@ -1,0 +1,22 @@
+---
+
+- name: Ensure any existing gcloud installation folder.
+  file:
+    path: /opt/google-cloud-sdk
+    state: absent
+
+- name: Ensure any existing conflicting APT gcloud packages are removed.
+  apt:
+    name: google-cloud-sdk
+    state: absent
+    update_cache: yes
+
+- name: Download Google's non-APT gcloud install script.
+  get_url:
+    url: https://dl.google.com/dl/cloudsdk/release/install_google_cloud_sdk.bash
+    dest: /tmp/gcloud_setup.sh
+    mode: 0755
+
+- name: Install gcloud using Google's non-APT install script.
+  shell: "/tmp/gcloud_setup.sh --disable-prompts --install-dir=/opt"
+

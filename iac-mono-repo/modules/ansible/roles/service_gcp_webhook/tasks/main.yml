@@ -1,0 +1,217 @@
+---
+
+- name: Ensure components for the gcp_webhook are installed
+  apt:
+      name: nginx
+      state: present
+
+- name: Ensure components for the gcp_webhook are installed
+  apt:
+      name: python-pip
+      state: present
+
+- name: Ensure components for the gcp_webhook are installed
+  apt:
+      name: python-dev
+      state: present
+
+- name: Ensure gcp_webhook working directory exists
+  file:
+      path: "{{ gcp_webhook_working_directory | default('/opt/gcp_webhook') }}"
+      state: directory
+      mode: 0770
+      owner: www-data
+      group: www-data
+
+- name: Ensure wsgi.py exists
+  copy:
+      src: files/wsgi.py
+      dest: "{{ gcp_webhook_working_directory | default('/opt/gcp_webhook') }}/"
+      force: yes
+      mode: 0770
+      owner: www-data
+      group: www-data
+
+- name: Ensure gcp_webhook.ini exists
+  copy:
+      src: files/gcp_webhook.ini
+      dest: "{{ gcp_webhook_working_directory | default('/opt/gcp_webhook') }}/"
+      force: yes
+      mode: 0770
+      owner: www-data
+      group: www-data
+
+- name: Ensure pip components are installed
+  pip: 
+     name: uwsgi
+- pip: 
+     name: flask
+- pip:
+     name: GitPython
+
+- name: Ensure gcp_webhook.service exists
+  template:
+      src: templates/gcp_webhook.service
+      dest: /etc/systemd/system/
+      force: yes
+      owner: www-data
+      group: www-data
+      mode: 0660
+
+- name: Ensure nginx config backup folder exists
+  file:
+      path: /etc/nginx/backups/sites-available
+      state: directory
+
+- name: Backup existing /etc/nginx/sites-available/default config file
+  shell: cp /etc/nginx/sites-available/default /etc/nginx/backups/sites-available/default_backup-$(date +%Y%m%d_%H%M%S)
+  ignore_errors: yes #This is needed for deployments of new gcp_webhooks so that ansible doesn't fail the play when there are no existing files to backup.
+
+- name: After the backup above, remove any existing /etc/nginx/sites-available/default config file
+  file:
+      path: "/etc/nginx/sites-available/{{ gcp_webhook_nginx_default_server_filename | default('default') }}"
+      state: absent
+
+- name: Ensure the gcp_webhook nginx webserver default config file exists
+  file:
+      path: "/etc/nginx/sites-available/{{ gcp_webhook_nginx_default_server_filename | default('default') }}"
+      state: touch
+
+- name: Ensure the nginx default server file contains the default_server config
+  blockinfile:
+      path: "/etc/nginx/sites-available/{{ gcp_webhook_nginx_default_server_filename | default('default') }}"
+      #This backup option cannot be used since it will create a backup of the nginx config in the same directory and cause nginx to fail to start.  Therefore the previous play above backups up the 'default' config manually.
+      backup: no
+      state: present
+      marker: "# {mark} ANSIBLE MANAGED BLOCK FOR {{ gcp_webhook_domain_name }}"
+      block: |
+          server{
+              listen 80 default_server;
+              listen [::]:80 default_server;
+              server_name {{ gcp_webhook_domain_name }};
+              return 301 https://$server_name$request_uri;
+              }
+          server{
+              listen 443 ssl http2 default_server;
+              listen [::]:443 ssl http2 default_server;
+              ssl_certificate /etc/letsencrypt/live/{{ gcp_webhook_domain_name }}/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/{{ gcp_webhook_domain_name }}/privkey.pem;
+          #Locations below
+
+- name: Ensure an EOF marker exists in the nginx default server config file for Ansible to use to support multiple URL locations
+  blockinfile:
+      path: "/etc/nginx/sites-available/{{ gcp_webhook_nginx_default_server_filename | default('default') }}"
+      #This backup option cannot be used since it will create a backup of the nginx config in the same directory and cause nginx to fail to start.  Therefore the previous play above backups up the 'default' config manually.
+      backup: no
+      state: present
+      #The line below is needed to ensure that ansible doesn't overwrite an existing block for a different URL path.
+      marker: "# {mark} ANSIBLE MANAGED BLOCK - '}' MARKER"
+      insertafter: EOF
+      block: |
+                  }
+
+- name: Ensure an URL handler for the new gcp_webhook exists in the nginx default server config file
+  blockinfile:
+      path: "/etc/nginx/sites-available/{{ gcp_webhook_nginx_default_server_filename | default('default') }}"
+      #This backup option cannot be used since it will create a backup of the nginx config in the same directory and cause nginx to fail to start.  Therefore the previous play above backups up the 'default' config manually.
+      backup: no
+      state: present
+      #The line below is needed to ensure that ansible doesn't overwrite an existing block for a different URL path.
+      marker: "# {mark} ANSIBLE MANAGED BLOCK FOR {{ gcp_webhook_url_path }}"
+      insertbefore: "BEGIN ANSIBLE MANAGED BLOCK - '}' MARKER"
+      block: |
+              location "/{{ gcp_webhook_url_path }}" {
+                  include uwsgi_params;
+                  uwsgi_pass unix:{{ gcp_webhook_working_directory }}/gcp_webhook.sock;
+                  }
+
+- name: Ensure the /opt/gcp_webhook/backups folder exists
+  file:
+      path: /opt/gcp_webhook/backups/
+      state: directory
+
+- name: Backup existing /opt/gcp_webhook/backups/gcp_webhook.py file just in case someone made manual modifications to it
+  shell: cp /opt/gcp_webhook/gcp_webhook.py /opt/gcp_webhook/backups/gcp_webhook_backup-$(date +%Y%m%d_%H%M%S)
+  ignore_errors: yes #Theo: this is needed for deployments of new configs so that ansible doesn't fail the play when there are no existing files to backup
+
+- name: Ensure gcp_webhook.py exists
+  file:
+      path: "{{ gcp_webhook_working_directory | default('/opt/gcp_webhook') }}/gcp_webhook.py"
+      state: touch
+      force: yes
+      owner: www-data
+      group: www-data
+      mode: 0770
+
+- name: Ensure the block below exist in the gcp_webhook.py file
+  blockinfile:
+      path: "/opt/gcp_webhook/gcp_webhook.py"
+      #This backup option cannot be used since it will create a backup of the gcp_webhook.py in the same directory and can cause the webhook to fail.  Therefore the previous play above backups up the 'default' config manually.
+      backup: no
+      state: present
+      #The line below is needed to ensure that ansible doesn't overwrite an existing block for a different URL path.
+      marker: "# {mark} ANSIBLE MANAGED BLOCK - BASE CONFIG"
+      insertbefore: BOF #Needed to ensure the block below is inserted at the start of the file.
+      block: |
+            from flask import Flask, request
+            import json
+            #The git module below is needed because most of the time, these webhooks are used to update a git repo on a VM so it's nice to have this module here by default.
+            import git
+            import subprocess
+            from subprocess import call
+
+            app = Flask(__name__)
+
+- name: Ensure the block below exist in the gcp_webhook.py file
+  blockinfile:
+      path: "/opt/gcp_webhook/gcp_webhook.py"
+      #This backup option cannot be used since it will create a backup of the gcp_webhook.py in the same directory and can cause the webhook to fail.  Therefore the previous play above backups up the 'default' config manually.
+      backup: no
+      state: present
+      #The line below is needed to ensure that ansible doesn't overwrite an existing block for a different URL path.
+      marker: "# {mark} ANSIBLE MANAGED BLOCK - BLOCK AT EOF"
+      insertafter: EOF
+      block: |
+            if __name__ == '__main__':
+               app.run(host='127.0.0.1',port=4905)
+
+- name: Ensure an URL handler for the new gcp_webhook exists in the gcp_webhook.py file
+  blockinfile:
+      path: "/opt/gcp_webhook/gcp_webhook.py"
+      #This backup option cannot be used since it will create a backup of the gcp_webhook.py in the same directory and can cause the webhook to fail.  Therefore the previous play above backups up the 'default' config manually.
+      backup: no
+      state: present
+      #The line below is needed to ensure that ansible doesn't overwrite an existing block for a different URL path.
+      marker: "# {mark} ANSIBLE MANAGED BLOCK FOR /{{ gcp_webhook_url_path }}"
+      insertbefore: "BEGIN ANSIBLE MANAGED BLOCK - BLOCK AT EOF"
+      block: |
+          {{ gcp_webhook_url_route_python_block }}
+
+- name: Ensure the /etc/letsencrypt folder exists
+  file:
+      path: /etc/letsencrypt
+      state: directory
+
+- name: Ensure options-ssl-nginx.conf exists
+  copy:
+      src: files/options-ssl-nginx.conf
+      dest: /etc/letsencrypt/options-ssl-nginx.conf
+      force: yes
+      backup: yes
+
+- name: Ensure symlink to sites-enabled default config exists
+  file:
+      src: /etc/nginx/sites-available/default
+      dest: /etc/nginx/sites-enabled/default
+      state: link
+
+- name: Ensure the nginx is restarted
+  systemd:
+    daemon_reload: yes
+    name: nginx
+    state: restarted
+
+- name: Ensure gcp_webhook service is restarted
+  service:
+      name: gcp_webhook
+      state: restarted

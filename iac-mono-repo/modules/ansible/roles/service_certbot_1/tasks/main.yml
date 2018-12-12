@@ -1,0 +1,91 @@
+---
+
+- name: Ensure software-properties-common is installed
+  apt:
+    name: software-properties-common
+    state: present
+
+- name: Ensure secure-delete (srm) is installed so that the cert files can be securely removed from the control VM after they are copied to the target host 
+  apt:
+   name: secure-delete
+   state: present
+
+- name: Ensure google-fluentd is installed to ensure script logs are streamed to Stackdriver Logging for realtime monitoring and alerting.
+  shell: curl -sSO "https://dl.google.com/cloudagents/install-logging-agent.sh" && bash install-logging-agent.sh
+
+- name: Ensure certbot repo is installed
+  apt_repository:
+    repo: ppa:certbot/certbot
+    state: present
+
+- name: Ensure certbot is installed
+  apt:
+    name: certbot
+    state: present
+
+- name: Ensure /opt/certbot directory exists
+  file:
+    path: /opt/certbot
+    state: directory
+    mode: 0700
+
+- name: Ensure certbot non-interactive pre hook script exists
+  copy:
+    src: files/authenticator.sh
+    dest: /opt/certbot
+    backup: no
+    force: yes
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Ensure certbot non-interactive post hook script exists
+  copy:
+    src: files/cleanup.sh
+    dest: /opt/certbot
+    backup: no
+    force: yes
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Ensure encrypted-certbot-key.json is securely copied to the certbot folder
+  copy:
+    src: files/encrypted-certbot-key.json
+    dest: /opt/certbot/encrypted-certbot-key.json
+    backup: no
+    force: yes
+    owner: root
+    group: root
+    mode: 0400
+
+- name: Ensure the certbot renewal service account is activated so it can be used to create/remove DNS TXT challenges 
+  shell: cd /opt/certbot && gcloud auth activate-service-account --key-file=encrypted-certbot-key.json
+  register: shell_result
+  ignore_errors: yes
+- debug:
+    var: shell_result.stdout_lines
+
+- name: FOR NON-WILDCARD DOMAINS - Renew the domain non-interactively using the pre and post validation hook scripts 
+  shell: cd /opt/certbot && certbot --manual --preferred-challenges dns certonly -d {{ certbot_domain_to_renew }} -n --manual-auth-hook ./authenticator.sh --manual-cleanup-hook ./cleanup.sh --manual-public-ip-logging-ok --agree-tos --email {{ certbot_email }}
+  register: shell_result
+  ignore_errors: yes
+  when: certbot_wildcardcert_domain == "NOTaWILDCARDCERTDOMAIN"
+
+- name: FOR WILDCARD DOMAINS - Renew the domain non-interactively using the pre and post validation hook scripts 
+  #Cerbot requires that wildcard domains use the "--server" argument to specify a specific server to issue a wildcard cert.
+  shell: cd /opt/certbot && certbot --manual --preferred-challenges dns certonly -d *.{{ certbot_domain_to_renew }} -n --manual-auth-hook ./authenticator.sh --manual-cleanup-hook ./cleanup.sh --manual-public-ip-logging-ok --agree-tos --email {{ certbot_email }} --server https://acme-v02.api.letsencrypt.org/directory
+  register: shell_result
+  ignore_errors: yes
+  when: certbot_wildcardcert_domain == "*.{{ certbot_domain_to_renew }}"
+
+- name: Ensure the encrypted-certbot-key.json remains encrypted when it's not in use
+  shell: ansible-vault encrypt /opt/certbot/encrypted-certbot-key.json --vault-password-file=~/.ssh/certbot_automation_ansible_vault_password
+
+- name: Ensure a cronjob exists to run certbot.sh script daily to check if any SSL certificates are less than 30 days from expiration so they can be renewed if necessary
+  cron:
+      name: "Daily run cerbot.sh to check if any SSL certificates are less than 30 days from expiration so they can be renewed if necessary."
+      minute: "0"
+      hour: "16" #Timezone is Pacific so it will run at 4 or 5pm depending on DST.
+      state: present
+      job: cd /opt/certbot/fullauto/modules/ansible/roles/service_certbot_1/files && ./certbot.sh
