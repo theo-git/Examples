@@ -1,0 +1,19 @@
+mode = "{{ dpl2_config_mode | default(barrel) }}"
+server = "{{ dpl2_config_barrel_server }}"
+port = {{ dpl2_config_barrel_server_port }}
+datasource = "{{ dpl2_config_datasource }}"
+data_file_path  = "{{ dpl2_config_data_file_path }}"
+data_file_prefix = "{{ dpl2_config_data_file_prefix }}"
+async_validation = {{ dpl2_config_async_validation }}
+filename_validation = {{ dpl2_config_filename_validation }}
+send_kills = {{ dpl2_config_send_kills }}
+logcount = {{ dpl2_config_logcount }}
+logfile = "{{ dpl2_config_logfile_path }}"
+read_mode = "{{ dpl2_config_read_mode }}"
+log_level = {{ dpl2_config_log_level }}
+global_whitelist = [
+"{{ dpl2_global_whitelist }}"
+]
+blacklist = [
+"{{ dpl2_blacklist }}"
+]

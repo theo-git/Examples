@@ -1,0 +1,13 @@
+---
+version: "{{ dpl1_docker_version }}" 
+services:
+  dpl1:
+    container_name: "{{ dpl1_container_name }}"
+    image: "{{ dpl1_image }}" 
+    volumes:
+      - "{{ dpl1_volume_bigtable_config }}"
+      - "{{ dpl1_volume_log }}"
+    ports:
+      - "{{ dpl1_ports_1 }}"
+      - "{{ dpl1_ports_2 }}"
+    restart: "{{ dpl1_restart_state }}"

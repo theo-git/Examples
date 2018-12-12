@@ -1,0 +1,14 @@
+---
+
+- name: Ensure the "/home/{{ bridge_user }}/.ssh" folder exists to store the GCR Credentials.
+  become_user: "{{ bridge_user }}"
+  file:
+      path: "$HOME/.ssh" 
+      state: directory
+      owner: "{{ bridge_user }}"
+      group: "{{ bridge_user }}"
+      mode: 0700
+
+- name: Ensure the Jenkins Quincy GCR credentials in '/tmp/creds' exists on the target machine.
+  become_user: "{{ bridge_user }}"
+  shell: 'KEY="$HOME"/.ssh/quincy-gcr.json;if [ -e "$file" ]; then cat /tmp/creds > "$KEY";fi'

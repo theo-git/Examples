@@ -1,0 +1,20 @@
+---
+
+- name: Ensure a systemd service unit exists.
+  template:
+    src: etc/systemd/system/prometheus-node-exporter.service.j2
+    dest: /etc/systemd/system/prometheus-node-exporter.service
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Re-enable node exporter service.
+    - Restart node exporter.
+
+- name: Ensure the "{{ prometheus_exporters_common_user }}" has permission to manage the node exporter service.
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: '^.*ALL \= \(root\) NOPASSWD: /usr/sbin/service prometheus-node-exporter \*'
+    line: "{{ prometheus_exporters_common_user }} ALL = (root) NOPASSWD: /usr/sbin/service prometheus-node-exporter * #Necessary to allow {{ prometheus_exporters_common_user }} to start, stop, & restart only the 'prometheus-node-exporter' service without needing to provide the root password."
+    validate: '/usr/sbin/visudo -cf %s'

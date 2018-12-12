@@ -1,0 +1,60 @@
+---
+
+- import_tasks: root_tasks.yml
+  when: root_access == "yes"
+
+- name: Ensure the "{{ sshfs_key_name }}" key pair exists.
+  shell: ssh-keygen -q -t rsa -f "{{ sshfs_key_name }}" -P ''
+  args:
+      chdir: "{{ sshfs_key_path }}"
+      creates: "{{ sshfs_key_path }}/{{ sshfs_key_name }}" 
+
+- name: Ensure the "{{ sshfs_key_name }}" key pair permissions are correct.
+  file:
+    path: "{{ item }}"
+    state: file
+    owner: "{{ sshfs_user }}"
+    group: "{{ sshfs_user }}"
+    mode: 0600
+  with_items:
+        - "{{ sshfs_key_path }}/{{ sshfs_key_name }}"
+        - "{{ sshfs_key_path }}/{{ sshfs_key_name }}.pub"
+
+- name: Ensure the "{{ sshfs_key_name }}" key exists in the "{{ sshfs_user }}" SSH config file.
+  blockinfile: 
+      path: "{{ sshfs_key_path }}/config"
+      block: "{{ sshfs_key_config }}"
+      marker: "# {mark} ANSIBLE MANAGED BLOCK FOR HOST {{ sshfs_remote_host }}"
+      state: present
+      create: yes
+      owner: "{{ sshfs_user }}"
+      group: "{{ sshfs_user }}"
+      mode: 0660 
+      
+- name: Ensure the "{{ sshfs_key_name }}" public key is in the 'authorized_keys' on "{{ sshfs_remote_host }}".
+  expect:
+    command: /bin/bash -c "ssh-copy-id -i {{ sshfs_key_path }}/{{ sshfs_key_name }}.pub {{ sshfs_user }}@{{ sshfs_remote_host }}"
+    responses:
+      Password: "{{ ansible_ssh_pass }}"
+
+- name: Ensure the ssh-ggent is started and the "{{ sshfs_key_name }}" private key is added to the ssh-agent.
+  shell: eval `ssh-agent -s` && ssh-add "{{ sshfs_key_name }}" 
+  args:
+      chdir: "{{ sshfs_key_path }}"
+
+- name: Ensure the SSHFS Verify Script exists on the target host.
+  template:
+    src: sshfs_verify.sh
+    dest: "{{ sshfs_working_directory }}/sshfs_verify.sh"
+    backup: no
+    force: yes # This is needed to ensure Ansible overwrites any existing file.
+    owner: "{{ sshfs_user }}"
+    group: "{{ sshfs_user }}"
+    mode: 0770
+
+- name: Ensure all SSHFS mountpoints are mounted.
+  shell: "{{ sshfs_working_directory }}/sshfs_verify.sh '{{ item }}'"
+  args:
+      executable: /bin/bash
+  with_items:
+      - "{{ sshfs_mountpoint_directories }}"

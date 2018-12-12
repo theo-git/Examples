@@ -1,0 +1,9 @@
+#The plays below are required for Ubuntu <=14.04 which do not support SNI.
+
+- name: Ensure curl is present
+  package: name=curl state=present
+
+- name: Add Docker apt key
+  shell: "curl -sSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -"
+  args:
+    warn: false

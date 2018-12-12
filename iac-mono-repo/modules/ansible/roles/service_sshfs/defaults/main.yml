@@ -1,0 +1,23 @@
+---
+
+# Root is required for some plays in this role.  If root_access is 'no', then root-dependent plays will be skipped.
+root_access: "yes"
+
+sshfs_working_directory: "/opt/test"
+sshfs_user: "test"
+sshfs_command_arguments: "-o IdentityFile={{ sshfs_key_path }}/{{ sshfs_key_name }} -o StrictHostKeyChecking=no -o reconnect -o allow_other -o cache=no -o Compression=no"
+sshfs_mountpoint_directories:
+    - /opt/svcmshn/test_journals
+    - /opt/svcmshn/test_journals_rsync
+sshfs_remote_host: "test" # Epic hostname that contains the journal files.
+sshfs_remote_path: "/test/path/to/data"
+sshfs_key_path: "/home/{{ sshfs_user }}/.ssh"
+sshfs_key_name: "test_key"
+sshfs_key_config: |
+    Host "{{ sshfs_remote_host }}"
+      Hostname "{{ sshfs_remote_host }}"
+      User "{{ sshfs_user }}"
+      IdentityFile "{{ sshfs_key_path }}/{{ sshfs_key_name }}"
+      Compression yes
+      CompressionLevel 3
+      ServerAliveInterval 30

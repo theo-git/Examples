@@ -1,0 +1,44 @@
+---
+#Specify the URL of the desired Tableau deb package you wish to download and install on the target host:
+tableau_server_ubuntu_url: "https://downloads.tableau.com/tssoftware/tableau-server-2018-1-1_amd64.deb"
+
+#Specify just the Tableau server software license you wish to use:
+tableau_server_ubuntu_license: "000000000000000000000000"
+
+#See:
+#http://docs.ansible.com/ansible/latest/reference_appendices/faq.html#how-do-i-generate-crypted-passwords-for-the-user-module
+tableau_server_ubuntu_tableau_user_crypt_password: ""
+
+tableau_server_ubuntu_tableau_user_noncrypt_password: ""
+
+tableau_server_ubuntu_webadmin_password: ""
+
+#Below the MySQL drivers are used to connect with the tableau server with the target CloudSQL instance.
+tableau_server_ubuntu_mysql_drivers_url: "https://dev.mysql.com/get/mysql-apt-config_0.8.10-1_all.deb" 
+
+#Specify the URL for the Tableau-provided Postgres Drivers that are required to enable the server to connect to it's own internal datasources:
+#More information about this can be found here:
+#https://onlinehelp.tableau.com/current/server-linux/en-us/dbdriver.htm
+tableau_server_ubuntu_custom_postgressql_drivers_url: "https://downloads.tableau.com/drivers/linux/deb/tableau-driver/tableau-postgresql-odbc_9.5.3_amd64.deb"
+
+tableau_server_ubuntu_registration_config: |
+    {
+      "zip" : "86753",
+      "country" : "USA",
+      "city" : "Seattle",
+      "last_name" : "Tester",
+      "industry" : "NA",
+      "eula" : "yes",
+      "title" : "NA",
+      "phone" : "555-555-6595",
+      "company" : "Example Company",
+      "state" : "WA",
+      "department" : "NA",
+      "first_name" : "Example",
+      "email" : "tableau@example.com"
+    }
+
+tableau_server_ubuntu_smtp_config: |
+    {
+        "test": "test"
+    }

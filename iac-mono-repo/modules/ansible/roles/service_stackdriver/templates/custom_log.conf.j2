@@ -1,0 +1,13 @@
+<source>
+    @type tail
+    # Format 'JSON' indicates the log is structured (JSON).
+    format "{{ stackdriver_log_format }}"
+    path "{{ stackdriver_log_path }}"
+    # The path of the position file that records where in the log file
+    # we have processed already. This is useful when the agent
+    # restarts.
+    pos_file "/var/lib/google-fluentd/pos/{{ stackdriver_log_name }}.pos"
+    read_from_head true
+    # The log tag for this log input.
+    tag "{{ stackdriver_log_tag }}"
+</source>

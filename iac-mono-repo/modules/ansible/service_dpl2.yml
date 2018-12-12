@@ -1,0 +1,13 @@
+---
+
+- hosts: all 
+  gather_facts: yes #Fetches required details about each host.
+  become: "{{ root_access | default('yes') }}"
+  serial: "{{ dpl2_serial | default(5) | int }}" 
+  roles:
+  - service_dpl2
+  - { role: service_sshfs, when: root_access == "yes" and dpl2_location == "seattle" }
+  - { role: service_docker, when: root_access == "yes" }
+  - { role: service_stackdriver, when: dpl2_location != "seattle" }
+  - { role: service_prometheus_exporters_common, when: root_access == "yes" and dpl2_location == "seattle" }
+  - { role: service_prometheus_node_exporter, when: root_access == "yes" and dpl2_location == "seattle" }

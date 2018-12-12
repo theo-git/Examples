@@ -1,0 +1,119 @@
+{
+  "configKeys" : {
+    "tableau_projects.language" : "en",
+    "pgsql.readonly.enabled" : true,
+    "endpoints.health.enabled" : true,
+    "endpoints.enabled" : false,
+    "features.PasswordReset" : true
+  },
+  "topologyVersion" : {
+    "nodes" : {
+      "node1" : {
+        "services" : {
+          "tabsvc" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "vizqlserver" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "filestore" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "samlservice" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "searchserver" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "licenseservice" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "gateway" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "dataserver" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "appzookeeper" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "cacheserver" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "clustercontroller" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "backuprestore" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "vizportal" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "hyper" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "backgrounder" : {
+            "instances" : [ {
+              "instanceId" : "1"
+            }, {
+              "instanceId" : "0"
+            } ]
+          },
+          "tabadmincontroller" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "pgsql" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "databasemaintenance" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "siteimportexport" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          },
+          "tabadminagent" : {
+            "instances" : [ {
+              "instanceId" : "0"
+            } ]
+          }
+        }
+      }
+    }
+  }
+}

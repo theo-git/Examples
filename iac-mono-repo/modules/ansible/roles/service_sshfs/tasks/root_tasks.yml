@@ -1,0 +1,42 @@
+---
+
+- name: Ensure the "{{ sshfs_key_path }}" exists.
+  file:
+    path: "{{ sshfs_key_path }}" 
+    state: directory
+    owner: "{{ sshfs_user }}"
+    group: "{{ sshfs_user }}"
+    mode: 0700 
+
+- name: Ensure the 'pexpect' pip module is installed so that Ansible can answer password prompts securely.
+  pip:
+    name:
+      - pexpect
+    state: present
+
+- name: Ensure SSHFS is installed so we can mount the journal files. Otherwise SSHFS will need to be installed manually.
+  apt: 
+    name: sshfs 
+    state: present
+    update_cache: yes
+
+- name: Ensure '/etc/fuse.conf' contains the 'user_allow_other' option to allow non-root users to mount remote directories via SSHFS. 
+  lineinfile:
+    path: /etc/fuse.conf
+    regexp: ".*user_allow_other"
+    line: "user_allow_other"
+    state: present
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Ensure all SSHFS mountpoint directories exist.
+  ignore_errors: yes #Needed to ensure this play does not fail if the directories have active mounts on them.
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ sshfs_user }}"
+    group: "{{ sshfs_user }}"
+    mode: 0770 #Required to ensure non-root users can mount to these directories.
+  with_items:
+        - "{{ sshfs_mountpoint_directories }}"

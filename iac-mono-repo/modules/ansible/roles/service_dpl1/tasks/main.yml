@@ -1,0 +1,72 @@
+---
+# tasks file for service_dpl1 
+
+- name: Ensure docker is installed.
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+    - docker.io
+    - docker-compose
+
+- name: Ensure dpl1 folder exists.
+  file:
+    path: "{{ dpl1_dockercomposeyml_path }}" 
+    state: directory
+
+- name: Ensure bigtable_config folder exists.
+  file:
+    path: "{{ dpl1_dockercomposeyml_path }}/bigtable_config" 
+    state: directory
+
+- name: Ensure docker-compose.yml exists with specified vars.
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ dpl1_dockercomposeyml_path }}/docker-compose.yml"
+    backup: no
+    force: yes # This is needed to ensure Ansible overwrites any existing compose file.
+    owner: root
+    group: root
+    mode: 0640
+  notify: 
+     - "restart dpl1 container"
+     - "run docker prune"
+
+- name: Ensure bigtable_config/dpl1.cfg exists with specified vars.
+  template:
+    src: dpl1_server.cfg.j2
+    dest: "{{ dpl1_dockercomposeyml_path }}/bigtable_config/dpl1_server.cfg"
+    backup: no
+    force: yes
+    owner: root
+    group: root
+    mode: 0640
+  notify: "restart dpl1 container"
+
+- name: Login with docker.
+  shell: docker login -u oauth2accesstoken -p "$(gcloud auth print-access-token)" "{{ dpl1_container_registry }}"
+
+- name: Ensure the dpl1 container is running.
+  docker_service:
+    state: present
+    project_src: "{{ dpl1_dockercomposeyml_path }}"
+
+- name: Ensure the Dpl1 Restart Script exists with specified vars.
+  template:
+    src: dpl1Monitor.sh.j2
+    dest: "{{ dpl1_dockercomposeyml_path }}/dpl1Monitor.sh"
+    backup: no
+    force: yes
+    owner: root
+    group: root
+    mode: 0750
+  notify: "restart dpl1 container"
+
+- name: Ensure the Dpl1 Restart Script cronjob exists and is always running. 
+  cron:
+    name: "Dpl1 Restart Script"
+    job: "{{ dpl1_dockercomposeyml_path }}/dpl1Monitor.sh {{ dpl1_bigtable_config_logfile }} {{ dpl1_dockercomposeyml_path }}/docker-compose.yml"  
+    state: present
+    minute: "*/2" #Runs the script every 2 minutes instead of every minute to avoid conflicting with Jenkins.

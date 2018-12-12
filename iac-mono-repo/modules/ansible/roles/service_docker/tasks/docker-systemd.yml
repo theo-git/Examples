@@ -1,0 +1,10 @@
+---
+- name: Load Linux distribution-specific vars.
+  include_vars: "{{ ansible_os_family }}.yml"
+  tags: always
+
+- import_tasks: docker-systemd-install.yml
+  when: docker_service_state != "absent"
+
+- import_tasks: docker-systemd-uninstall.yml
+  when: docker_service_state == "absent"

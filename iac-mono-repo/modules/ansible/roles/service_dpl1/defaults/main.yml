@@ -1,0 +1,64 @@
+---
+# defaults file for service_dpl1 
+
+###################################################################################################
+# IMPORTANT #
+###################################################################################################
+# For variables marked with "###":
+# These variables can only be set to one of the following values:
+# '"N/A"'
+# "true"
+# "false"
+#
+# The '"N/A"' instructs Dpl1 to ignore the variable.
+# Do _not_ use "N/A" without the single quotes.
+# Otherwise it will cause Dpl1 to fail to start.
+# In the final config, the value is written without quotes.
+###################################################################################################
+
+dpl1_prefix: "test"
+dpl1_version: "1.8.4"
+dpl1_dockercomposeyml_path: "/opt/dpl1"
+dpl1_docker_version: "2"
+dpl1_container_name: "dpl1_server_{{ dpl1_prefix }}"
+dpl1_container_registry: "us.gcr.io/example/dpl1"
+dpl1_image: "{{ dpl1_container_registry }}/dpl1_server:{{ dpl1_version }}"
+dpl1_volume_bigtable_config: "./bigtable_config:/opt/dpl1/config"
+dpl1_volume_log: "/var/log/dpl1:/var/log/dpl1"
+dpl1_restart_state: "always"
+dpl1_ports_1: "9700:9700"
+dpl1_ports_2: "3081:3080"
+dpl1_bigtable_config_logfile: "/var/log/dpl1/{{ dpl1_container_name }}.log"
+dpl1_bigtable_config_datasource_name: "{{ dpl1_prefix }}"
+dpl1_bigtable_config_instance_name: "{{ dpl1_prefix }}"
+dpl1_bigtable_config_publish_updates: "true" ###
+dpl1_bigtable_config_publish_values: "true" ###
+dpl1_bigtable_config_brokers: "[\"kafka-1:9092,kafka-2:9092,kafka-3:9092\"]"
+dpl1_bigtable_config_updates_topic: "{{ dpl1_prefix }}"
+dpl1_bigtable_config_log_batch_count: "1"
+dpl1_bigtable_config_stats_interval_sec: "30"
+dpl1_bigtable_config_aggressive_validation: "false" ###
+dpl1_bigtable_config_log_level: "7"
+dpl1_bigtable_config_max_batch_size: "63236"
+dpl1_bigtable_config_max_message_size_bytes: "231456"
+dpl1_bigtable_config_server_address: "1.2.3.4:9600"
+dpl1_bigtable_config_mds_conn_string: "test"
+####################################################################################################################################################################################################
+# Stackdriver Logging variables:
+####################################################################################################################################################################################################
+stackdriver_log_name: "{{ dpl1_container_name }}"
+stackdriver_log_format: "json"
+stackdriver_log_path: "{{ dpl1_bigtable_config_logfile }}"
+stackdriver_log_tag: "pipeline-dpl1-{{ dpl1_prefix }}"
+logrotate_scripts:
+  - name: "{{ dpl1_container_name }}"
+    path: "{{ dpl1_bigtable_config_logfile }}"
+    options:
+      - daily
+      - notifempty
+      - compress
+      - delaycompress
+      - maxage 2
+      - maxsize 209715200
+      - create
+      - copytruncate

@@ -1,0 +1,73 @@
+---
+# tasks file
+
+- name: Ensure software-properties-common is installed on the target host and/or control machine
+  apt:
+    name: software-properties-common
+    state: present
+
+- name: Ensure certbot repo is installed on the target host and/or control machine
+  apt_repository:
+    repo: ppa:certbot/certbot
+    state: present
+
+- name: Ensure certbot is installed on the target host and/or loadbalancer
+  apt:
+    name: certbot
+    state: present
+
+- name: Copy renewed live certs to the target host and/or loadbalancer
+  copy:
+    src: /etc/letsencrypt/live/{{ certbot_domain_to_renew }}/
+    dest: /etc/letsencrypt/live/{{ certbot_domain_to_renew }}
+    force: yes
+    backup: no 
+    owner: root
+    group: root
+    mode: 0700
+
+#The task below is required for domains that use a load-balancer and whose cert needs to remain on the localhost.
+- name: Copy renewed certs archive to the target host and/or loadbalancer
+  copy:
+    src: /etc/letsencrypt/archive/{{ certbot_domain_to_renew }}/
+    dest: /etc/letsencrypt/archive/{{ certbot_domain_to_renew }}
+    force: yes
+    backup: no 
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Ensure /opt/certbot/finalize/shared & all preceding directories exist on the target host and/or loadbalancer
+  file:
+    path: /opt/certbot/finalize/shared
+    state: directory
+    mode: 0700
+
+- name: Ensure the shared Bash scripts that multiple finalize_scripts utilize exist
+  copy:
+    src: files/shared/
+    dest: /opt/certbot/finalize/shared/
+    backup: no
+    force: yes
+    owner: root
+    group: root
+    mode: 0750
+
+- name: Ensure the final bash script for the domain_to_renew exists.
+  copy:
+    src: files/{{ certbot_domain_to_renew }}.sh
+    dest: /opt/certbot/finalize
+    backup: no
+    force: yes
+    owner: root
+    group: root
+    mode: 0770
+
+- name: Run the final bash script to restart the VM web server, update the cert on the loadbalancer, and/or other operations.
+  shell: "./{{ certbot_domain_to_renew }}.sh"
+  register: shell_result
+  args:
+      chdir: /opt/certbot/finalize
+      executable: /bin/bash
+- debug:
+    var: shell_result.stdout_lines

@@ -1,0 +1,18 @@
+---
+
+- name: Ensure the Dpl2 working directory exists.
+  file:
+    path: "{{ dpl2_working_directory }}"
+    state: directory
+    owner: "{{ dpl2_user }}"
+    group: "{{ dpl2_user }}"
+    mode: 0774
+
+- name: Ensure the user "{{ dpl2_user }}" exists.
+  user:
+    name: "{{ dpl2_user }}"
+    shell: /bin/bash
+    system: yes
+    state: present
+    password: "{{ dpl2_user_password }}"
+

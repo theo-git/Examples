@@ -1,0 +1,5 @@
+---
+
+- name: Login with docker.
+  become_user: "{{ bridge_user }}"
+  shell: docker login -u _json_key -p "$(cat {{ docker_login_json_key }})" "{{ docker_registry }}"

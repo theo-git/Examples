@@ -1,0 +1,10 @@
+---
+
+- hosts: all
+  become: yes
+  gather_facts: no #Needed to ensure that Ansible proceeds to running the play right after Terraform creates the VM.  The main tasks file handles waiting for an SSH connection before proceeding.
+  roles:
+  - tableau_server_ubuntu
+  vars_files:
+  - host_vars/tableau_server_ubuntu.yml
+

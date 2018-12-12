@@ -1,0 +1,16 @@
+---
+
+- name: If the system service manager is 'upstart', determine the version.
+  command: initctl version
+  register: upstart_version
+
+- name: If the system service manager is 'upstart', ensure an init service unit exists.
+  template:
+    src: etc/init/prometheus-node-exporter.conf.j2
+    dest: /etc/init/prometheus-node-exporter.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Re-init node exporter.
+    - Restart node exporter.

@@ -1,0 +1,11 @@
+---
+
+- name: Ensure the container is stopped and then started.
+  shell: docker-compose down && docker-compose up -d
+  args:
+    chdir: "{{ dpl1_dockercomposeyml_path }}"
+  listen: "restart dpl1 container"
+
+- name: Ensure any unused docker images and volumes are removed.
+  shell: docker system prune -f -a && docker volume prune -f
+  listen: "run docker prune"

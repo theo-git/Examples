@@ -1,0 +1,38 @@
+---
+
+- name: Ensure dependencies are installed.
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - curl
+    - tar
+    - bzip2
+
+- name: Ensure the "{{ prometheus_exporters_common_user }}" system group exists.
+  group:
+    name: "{{ prometheus_exporters_common_group }}"
+    system: yes
+    state: present
+
+- name: Ensure the "{{ prometheus_exporters_common_user }}" system user exists.
+  when: dpl2_location != "seattle"
+  user:
+    name: "{{ prometheus_exporters_common_user }}"
+    system: yes
+    shell: "/sbin/nologin"
+    group: "{{ prometheus_exporters_common_group }}"
+    createhome: no
+
+- name: Ensure "{{ prometheus_exporters_common_user }}" directories exist.
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_exporters_common_user }}"
+    group: "{{ prometheus_exporters_common_group }}"
+    mode: 0755
+  with_items:
+    - "{{ prometheus_exporters_common_root_dir }}"
+    - "{{ prometheus_exporters_common_dist_dir }}"
+    - "{{ prometheus_exporters_common_log_dir }}"
+    - "{{ prometheus_exporters_common_conf_dir }}"

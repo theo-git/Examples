@@ -1,0 +1,13 @@
+[Unit]
+Description=uWSGI instance to serve gcp_webhook
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+WorkingDirectory={{ gcp_webhook_working_directory | default('/opt/gcp_webhook') }}
+Environment="{{ gcp_webhook_environment_path | default('PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games') }}"
+ExecStart=/usr/local/bin/uwsgi --ini "{{ gcp_webhook_working_directory | default('/opt/gcp_webhook') }}"/gcp_webhook.ini
+
+[Install]
+WantedBy=multi-user.target

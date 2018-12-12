@@ -1,0 +1,6 @@
+---
+
+- hosts: certbot_target_host
+  become: true
+  roles:
+  - service_certbot_2

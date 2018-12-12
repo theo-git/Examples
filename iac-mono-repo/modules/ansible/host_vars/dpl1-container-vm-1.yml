@@ -1,0 +1,7 @@
+---
+
+dpl1_prefix: "test1"
+dpl1_ports_1: "7700:7700"
+dpl1_ports_2: "9082:9080"
+dpl1_bigtable_config_server_address: "0.0.0.0:4800"
+dpl1_bigtable_config_mds_conn_string: "bigtable:///example-project/instance/example?write_batch_limit=1000&num_channels=58"
