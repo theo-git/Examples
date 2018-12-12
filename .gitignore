@@ -4,3 +4,6 @@ terraform.tfstate
 *.terraform
 *.iml
 .idea
+*.swp
+*.retry
+*.iml
