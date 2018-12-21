@@ -2,21 +2,21 @@
 # tasks file
 
 - name: Securely delete certs from the 'live' folder on the ops-bot machine now that they are on the target VM 
-  shell: srm -rf /etc/letsencrypt/live/{{ certbot_domain_to_renew }}*
+  shell: srm -rf /etc/letsencrypt/live/{{ certbot_domain_to_renew }}
   register: shell_result
   ignore_errors: yes
 - debug:
     var: shell_result.stdout_lines
 
 - name: Securely delete certs from the 'archive' folder on the ops-bot machine now that they are on the target VM 
-  shell: srm -rf /etc/letsencrypt/archive/{{ certbot_domain_to_renew }}*
+  shell: srm -rf /etc/letsencrypt/archive/{{ certbot_domain_to_renew }}
   register: shell_result
   ignore_errors: yes
 - debug:
     var: shell_result.stdout_lines
 
 - name: Securely delete cert certbot-renew config from the 'renew' folder on the ops-bot machine now that they are on the target VM 
-  shell: srm -rf /etc/letsencrypt/renewal/{{ certbot_domain_to_renew }}*
+  shell: srm -rf /etc/letsencrypt/renewal/{{ certbot_domain_to_renew }}
   register: shell_result
   ignore_errors: yes
 - debug:
