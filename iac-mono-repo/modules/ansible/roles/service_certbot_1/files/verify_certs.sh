@@ -17,7 +17,7 @@ function verify_certs {
             gather_vars
             backup_certs
             verify_dirs
-            cd /opt/certbot/InfrastructureState || exit #Exit in case 'cd' fails
+            cd ../../../ || exit #Exit in case 'cd' fails
 
             #STEP 1:
             echo CREATING THE RENEWED CERT ON THE CERBOT HOST FOR "$domain" AFTER CONFIRMING ALL THE DEPENDENCIES ARE MET:
@@ -28,12 +28,12 @@ function verify_certs {
                 echo ""
                 echo "IMPORTANT: $domain" IS ON THE WILDCARDCERTDOMAINS LIST SO A WILDCARD CERT WILL BE CREATED FOR "$domain":
                 echo ""
-                ansible-playbook -i service_certbot_1.yml -v --vault-password-file=~/.ssh/certbot_ansible_vault_password --extra-vars "certbot_domain_to_renew=$domain certbot_wildcardcert_domain=*.$domain  certbot_email=$CERTBOT_EMAIL"
+                ansible-playbook -i inventories/certbot/"$domain" service_certbot_1.yml -v --vault-password-file=~/.ssh/certbot_ansible_vault_password --extra-vars "certbot_domain_to_renew=$domain certbot_wildcardcert_domain=*.$domain  certbot_email=$CERTBOT_EMAIL"
             else
                 echo ""
                 echo "IMPORTANT: $domain" is NOT on the WILDCARDCERTDOMAINS list so a wildcard cert will NOT be created for "$domain":
                 echo ""
-                ansible-playbook -i service_certbot_1.yml -v --vault-password-file=~/.ssh/certbot_ansible_vault_password --extra-vars "certbot_domain_to_renew=$domain certbot_wildcardcert_domain=NOTaWILDCARDCERTDOMAIN  certbot_email=$CERTBOT_EMAIL"
+                ansible-playbook -i inventories/certbot/"$domain" service_certbot_1.yml -v --vault-password-file=~/.ssh/certbot_ansible_vault_password --extra-vars "certbot_domain_to_renew=$domain certbot_wildcardcert_domain=NOTaWILDCARDCERTDOMAIN  certbot_email=$CERTBOT_EMAIL"
             fi
 
             #STEP 2:
